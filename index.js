@@ -17,20 +17,29 @@ const {
   TextInputStyle
 } = require("discord.js");
 
+// ======================================================
+// CONFIG
+// ======================================================
+
 const CONFIG = {
   token: process.env.TOKEN,
   clientId: process.env.CLIENT_ID,
 
+  // الرول المسموح لها باستخدام /application
   commandRoleId: process.env.APPLICATION_COMMAND_ROLE_ID,
 
+  // السيرفر الأساسي
   mainGuildId: process.env.MAIN_GUILD_ID,
 
+  // سيرفر اللوج
   logGuildId: process.env.LOG_GUILD_ID,
   logChannelId: process.env.LOG_CHANNEL_ID,
 
+  // الرول التي يحصل عليها المقبول
   acceptedRoleId: process.env.ACCEPTED_ROLE_ID,
 
-  // لو سيبتها فاضية، المراجعة هتكون للأدمن فقط
+  // رول المراجعة - اختياري
+  // لو فاضي -> Administrator فقط
   reviewRoleId: process.env.REVIEW_ROLE_ID || null,
 
   embedColor: Number.parseInt(
@@ -39,7 +48,11 @@ const CONFIG = {
   )
 };
 
-for (const key of [
+// ======================================================
+// ENV CHECK
+// ======================================================
+
+const requiredEnv = [
   "token",
   "clientId",
   "commandRoleId",
@@ -47,7 +60,9 @@ for (const key of [
   "logGuildId",
   "logChannelId",
   "acceptedRoleId"
-]) {
+];
+
+for (const key of requiredEnv) {
   if (!CONFIG[key]) {
     throw new Error(`Missing .env value: ${key}`);
   }
@@ -57,13 +72,20 @@ if (!Number.isFinite(CONFIG.embedColor)) {
   throw new Error("Invalid EMBED_COLOR");
 }
 
+// ======================================================
+// CLIENT
+// ======================================================
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.DirectMessages
   ],
-  partials: [Partials.Channel]
+
+  partials: [
+    Partials.Channel
+  ]
 });
 
 // ======================================================
@@ -75,49 +97,59 @@ const QUESTIONS = [
     title: "الاسم",
     question: "اكتب اسمك."
   },
+
   {
     title: "السن",
     question: "اكتب سنك."
   },
+
   {
     title: "الخبرة في Kick",
     question: "احكيلنا عن خبرتك في Kick."
   },
+
   {
     title: "الـ Timeout",
     question:
       "ازاي تعمل Timeout للشخص وامتى تعمل له Timeout؟"
   },
+
   {
     title: "الـ Ban",
     question:
       "ازاي تعمل Ban للشخص وامتى تعمل له Ban؟"
   },
+
   {
     title: "التصويت",
     question:
       "تعمل ايه عشان تعمل تصويت وامتى تعمل تصويت؟"
   },
+
   {
     title: "تغيير وضع اللعبة",
     question:
       "تعمل ايه عشان تغير وضع اللعبة وامتى تغير وضع اللعبة؟"
   },
+
   {
     title: "تمكين وضع المشتركين فقط",
     question:
       "تعمل ايه لتمكين وضع المشتركين فقط في الدردشة؟"
   },
+
   {
     title: "إلغاء وضع المشتركين فقط",
     question:
       "تعمل ايه لإلغاء وضع المشتركين فقط في الدردشة؟"
   },
+
   {
     title: "Slow Mode",
     question:
       "ازاي تعمل سلو مود للشات؟"
   },
+
   {
     title: "عنوان البث",
     question:
@@ -126,7 +158,7 @@ const QUESTIONS = [
 ];
 
 // ======================================================
-// STORAGE
+// TEMP STORAGE
 // ======================================================
 
 const applications = new Map();
@@ -174,8 +206,10 @@ function createQuestionEmbed(index) {
 
   return createEmbed(
     `تقديم Mod Kick | ${index + 1}/${QUESTIONS.length}`,
-    `**${question.title}**\n\n${question.question}\n\n` +
-      `اضغط على زر **الإجابة** واكتب إجابتك.`
+
+    `**${question.title}**\n\n` +
+    `${question.question}\n\n` +
+    `اضغط على زر **الإجابة** واكتب إجابتك.`
   );
 }
 
@@ -184,13 +218,18 @@ function createQuestionEmbed(index) {
 // ======================================================
 
 function createAnswerRow(userId, index) {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`answer:${userId}:${index}`)
-      .setLabel("الإجابة")
-      .setEmoji("📝")
-      .setStyle(ButtonStyle.Primary)
-  );
+  return new ActionRowBuilder()
+    .addComponents(
+      new ButtonBuilder()
+        .setCustomId(
+          `answer:${userId}:${index}`
+        )
+        .setLabel("الإجابة")
+        .setEmoji("📝")
+        .setStyle(
+          ButtonStyle.Primary
+        )
+    );
 }
 
 // ======================================================
@@ -198,138 +237,214 @@ function createAnswerRow(userId, index) {
 // ======================================================
 
 function createReviewRow(appId) {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`accept:${appId}`)
-      .setLabel("قبول")
-      .setEmoji("✅")
-      .setStyle(ButtonStyle.Success),
+  return new ActionRowBuilder()
+    .addComponents(
 
-    new ButtonBuilder()
-      .setCustomId(`reject:${appId}`)
-      .setLabel("رفض")
-      .setEmoji("❌")
-      .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId(
+          `accept:${appId}`
+        )
+        .setLabel("قبول")
+        .setEmoji("✅")
+        .setStyle(
+          ButtonStyle.Success
+        ),
 
-    new ButtonBuilder()
-      .setCustomId(`ai:${appId}`)
-      .setLabel("فحص AI")
-      .setEmoji("🤖")
-      .setStyle(ButtonStyle.Secondary)
-  );
+      new ButtonBuilder()
+        .setCustomId(
+          `reject:${appId}`
+        )
+        .setLabel("رفض")
+        .setEmoji("❌")
+        .setStyle(
+          ButtonStyle.Danger
+        ),
+
+      new ButtonBuilder()
+        .setCustomId(
+          `ai:${appId}`
+        )
+        .setLabel("فحص AI")
+        .setEmoji("🤖")
+        .setStyle(
+          ButtonStyle.Secondary
+        )
+
+    );
 }
 
 // ======================================================
-// APPLICATION SUMMARY
+// SUMMARY EMBED
 // ======================================================
 
 function createSummaryEmbed(
   app,
   status = "قيد المراجعة"
 ) {
-  let color = CONFIG.embedColor;
 
-  if (status === "تم القبول") {
+  let color =
+    CONFIG.embedColor;
+
+  if (
+    status === "تم القبول"
+  ) {
     color = 0x2ecc71;
   }
 
-  if (status === "تم الرفض") {
+  if (
+    status === "تم الرفض"
+  ) {
     color = 0xe74c3c;
   }
 
-  const embed = createEmbed(
-    "📋 تقديم Mod Kick",
-    `**المتقدم:** <@${app.userId}>\n` +
+  const result =
+    createEmbed(
+      "📋 تقديم Mod Kick",
+
+      `**المتقدم:** <@${app.userId}>\n` +
       `**الحالة:** ${status}\n` +
       `**رقم التقديم:** \`${app.id}\``,
-    color
-  );
 
-  embed.addFields(
+      color
+    );
+
+  result.addFields(
+
     {
       name: "الاسم",
-      value: safeText(app.answers[0], 250),
+      value: safeText(
+        app.answers[0],
+        250
+      ),
       inline: true
     },
+
     {
       name: "السن",
-      value: safeText(app.answers[1], 100),
+      value: safeText(
+        app.answers[1],
+        100
+      ),
       inline: true
     },
+
     {
       name: "الخبرة في Kick",
-      value: safeText(app.answers[2], 900)
+      value: safeText(
+        app.answers[2],
+        900
+      )
     }
+
   );
 
   if (app.reviewerId) {
-    embed.addFields({
+
+    result.addFields({
       name:
         status === "تم القبول"
           ? "تم القبول بواسطة"
           : "تم الرفض بواسطة",
-      value: `<@${app.reviewerId}>`,
+
+      value:
+        `<@${app.reviewerId}>`,
+
       inline: true
     });
+
   }
 
   if (app.rejectReason) {
-    embed.addFields({
+
+    result.addFields({
       name: "سبب الرفض",
-      value: safeText(app.rejectReason, 1000)
+      value: safeText(
+        app.rejectReason,
+        1000
+      )
     });
+
   }
 
-  return embed;
+  return result;
 }
 
 // ======================================================
-// SEND ALL ANSWERS
+// SEND ANSWERS
 // ======================================================
 
-async function sendAnswers(channel, app) {
+async function sendAnswers(
+  channel,
+  app
+) {
+
   for (
     let start = 0;
     start < QUESTIONS.length;
     start += 4
   ) {
+
     const fields = [];
 
     for (
       let i = start;
-      i < Math.min(start + 4, QUESTIONS.length);
+      i < Math.min(
+        start + 4,
+        QUESTIONS.length
+      );
       i++
     ) {
+
       fields.push({
-        name: `${i + 1}. ${QUESTIONS[i].title}`,
-        value: safeText(app.answers[i], 1000)
+        name:
+          `${i + 1}. ${QUESTIONS[i].title}`,
+
+        value:
+          safeText(
+            app.answers[i],
+            1000
+          )
       });
+
     }
 
     await channel.send({
       embeds: [
-        createEmbed("📝 إجابات التقديم").addFields(fields)
+        createEmbed(
+          "📝 إجابات التقديم"
+        ).addFields(fields)
       ]
     });
+
   }
+
 }
 
 // ======================================================
 // REVIEW PERMISSION
 // ======================================================
 
-function canReview(interaction) {
-  if (!interaction.inGuild()) {
+function canReview(
+  interaction
+) {
+
+  if (
+    !interaction.inGuild()
+  ) {
     return false;
   }
 
-  if (interaction.guildId !== CONFIG.mainGuildId) {
+  if (
+    interaction.guildId !==
+    CONFIG.mainGuildId
+  ) {
     return false;
   }
 
   if (
     interaction.memberPermissions?.has(
-      PermissionsBitField.Flags.Administrator
+      PermissionsBitField.Flags
+        .Administrator
     )
   ) {
     return true;
@@ -351,25 +466,39 @@ function canReview(interaction) {
 // AI STYLE CHECK
 // ======================================================
 
-// مجرد مؤشر أسلوبي تقريبي.
-// ليس كاشف AI حقيقيًا ولا إثباتًا لاستخدام AI.
+// ده مجرد مؤشر أسلوبي تقريبي.
+// مش AI detector حقيقي.
 
-function estimateAIStyle(answers) {
-  const texts = answers
-    .filter(Boolean)
-    .map(text => text.trim())
-    .filter(Boolean);
+function estimateAIStyle(
+  answers
+) {
 
-  if (texts.length < QUESTIONS.length) {
+  const texts =
+    answers
+      .filter(Boolean)
+      .map(text =>
+        text.trim()
+      )
+      .filter(Boolean);
+
+  if (
+    texts.length <
+    QUESTIONS.length
+  ) {
+
     return {
       score: null,
-      note: "الإجابات غير مكتملة."
+      note:
+        "الإجابات غير مكتملة."
     };
+
   }
 
-  const fullText = texts.join(" ");
+  const fullText =
+    texts.join(" ");
 
   let score = 0;
+
   const clues = [];
 
   const formalPhrases = [
@@ -381,53 +510,73 @@ function estimateAIStyle(answers) {
     "يجب التنويه"
   ];
 
-  const foundFormalPhrases =
-    formalPhrases.filter(phrase =>
-      fullText.includes(phrase)
+  const found =
+    formalPhrases.filter(
+      phrase =>
+        fullText.includes(
+          phrase
+        )
     ).length;
 
-  if (foundFormalPhrases >= 2) {
+  if (found >= 2) {
+
     score += 20;
+
     clues.push(
       "وجود عدة عبارات رسمية متكررة."
     );
+
   }
 
-  const lengths = texts.map(text =>
-    text
-      .split(/\s+/)
-      .filter(Boolean)
-      .length
-  );
+  const lengths =
+    texts.map(text =>
+      text
+        .split(/\s+/)
+        .filter(Boolean)
+        .length
+    );
 
   const average =
-    lengths.reduce((a, b) => a + b, 0) /
-    lengths.length;
+    lengths.reduce(
+      (a, b) => a + b,
+      0
+    ) / lengths.length;
 
   const variance =
     lengths.reduce(
       (sum, value) =>
-        sum + Math.pow(value - average, 2),
+        sum +
+        Math.pow(
+          value - average,
+          2
+        ),
       0
     ) / lengths.length;
 
   if (
     average > 0 &&
-    variance < average * 0.35
+    variance <
+      average * 0.35
   ) {
+
     score += 15;
 
     clues.push(
       "أطوال الإجابات متقاربة بصورة ملحوظة."
     );
+
   }
 
-  if (average > 45) {
+  if (
+    average > 45
+  ) {
+
     score += 10;
 
     clues.push(
       "متوسط طول الإجابات مرتفع نسبيًا."
     );
+
   }
 
   const officialWords = [
@@ -439,37 +588,55 @@ function estimateAIStyle(answers) {
   ];
 
   const officialCount =
-    officialWords.filter(word =>
-      fullText.includes(word)
+    officialWords.filter(
+      word =>
+        fullText.includes(
+          word
+        )
     ).length;
 
-  if (officialCount >= 2) {
+  if (
+    officialCount >= 2
+  ) {
+
     score += 15;
 
     clues.push(
       "استخدام عدة تعبيرات رسمية."
     );
+
   }
 
   return {
-    score: Math.min(score, 100),
+    score: Math.min(
+      score,
+      100
+    ),
+
     note:
-      clues.length > 0
+      clues.length
         ? clues.join("\n")
         : "لم تظهر مؤشرات أسلوبية واضحة."
   };
 }
 
 // ======================================================
-// SEND APPLICATION TO STAFF
+// DELIVER APPLICATION
 // ======================================================
 
-async function deliverApplication(app) {
+async function deliverApplication(
+  app
+) {
+
   const mainGuild =
-    await client.guilds.fetch(CONFIG.mainGuildId);
+    await client.guilds.fetch(
+      CONFIG.mainGuildId
+    );
 
   const logGuild =
-    await client.guilds.fetch(CONFIG.logGuildId);
+    await client.guilds.fetch(
+      CONFIG.logGuildId
+    );
 
   const mainChannel =
     await mainGuild.channels.fetch(
@@ -483,66 +650,81 @@ async function deliverApplication(app) {
 
   if (
     !mainChannel ||
-    !mainChannel.isTextBased() ||
-    !mainChannel.send
+    !mainChannel.isTextBased()
   ) {
     throw new Error(
-      "Main application channel not found."
+      "Main channel not found."
     );
   }
 
   if (
     !logChannel ||
-    !logChannel.isTextBased() ||
-    !logChannel.send
+    !logChannel.isTextBased()
   ) {
     throw new Error(
       "Log channel not found."
     );
   }
 
-  // رسالة التقديم في السيرفر الأساسي
+  // ==================================================
+  // MAIN SERVER
+  // ==================================================
 
   const starter =
     await mainChannel.send({
+
       content:
         `📥 **تقديم جديد**\n` +
         `المتقدم: <@${app.userId}>`,
+
       embeds: [
         createSummaryEmbed(app)
       ]
-    });
 
-  // إنشاء Thread
+    });
 
   const thread =
     await starter.startThread({
+
       name:
-        `Mod Kick - ${app.username}`.slice(
-          0,
-          100
-        ),
-      autoArchiveDuration: 1440,
+        `Mod Kick - ${app.username}`
+          .slice(0, 100),
+
+      autoArchiveDuration:
+        1440,
+
       reason:
         "Elsisy Application - Mod Kick"
+
     });
 
-  app.threadId = thread.id;
-  app.threadStarterId = starter.id;
+  app.threadId =
+    thread.id;
 
-  // إرسال الإجابات داخل الثريد
+  app.threadStarterId =
+    starter.id;
 
-  await sendAnswers(thread, app);
+  // إرسال البيانات داخل الثريد
+
+  await sendAnswers(
+    thread,
+    app
+  );
 
   // أزرار المراجعة
 
   const reviewMessage =
     await thread.send({
+
       content:
         "🛡️ **إجراءات مراجعة التقديم:**",
+
       components: [
-        createReviewRow(app.id)
+        createReviewRow(
+          app.id
+        )
       ]
+
     });
 
   app.reviewMessageId =
@@ -554,12 +736,15 @@ async function deliverApplication(app) {
 
   const logMessage =
     await logChannel.send({
+
       content:
         `📥 **تقديم جديد**\n` +
         `المتقدم: <@${app.userId}>`,
+
       embeds: [
         createSummaryEmbed(app)
       ]
+
     });
 
   app.logMessageId =
@@ -568,8 +753,6 @@ async function deliverApplication(app) {
   app.logChannelId =
     logChannel.id;
 
-  // إرسال الإجابات في اللوج
-
   await sendAnswers(
     logChannel,
     app
@@ -577,7 +760,7 @@ async function deliverApplication(app) {
 }
 
 // ======================================================
-// UPDATE AFTER ACCEPT / REJECT
+// UPDATE REVIEW
 // ======================================================
 
 async function updateReview(
@@ -585,6 +768,7 @@ async function updateReview(
   status,
   reviewerId
 ) {
+
   const mainGuild =
     await client.guilds.fetch(
       CONFIG.mainGuildId
@@ -595,7 +779,10 @@ async function updateReview(
       app.threadId
     ).catch(() => null);
 
-  if (thread?.isThread()) {
+  if (
+    thread?.isThread()
+  ) {
+
     // تحديث رسالة بداية الثريد
 
     const starter =
@@ -603,10 +790,11 @@ async function updateReview(
         .catch(() => null);
 
     if (starter) {
+
       await starter.edit({
+
         content:
-          `${status === "تم القبول" ? "✅" : "❌"} ` +
-          `${status}\n` +
+          `${status === "تم القبول" ? "✅" : "❌"} ${status}\n` +
           `المتقدم: <@${app.userId}>\n` +
           `بواسطة: <@${reviewerId}>`,
 
@@ -616,7 +804,9 @@ async function updateReview(
             status
           )
         ]
+
       });
+
     }
 
     // إزالة الأزرار
@@ -627,16 +817,22 @@ async function updateReview(
       ).catch(() => null);
 
     if (reviewMessage) {
+
       await reviewMessage.edit({
+
         content:
           `${status} بواسطة <@${reviewerId}>`,
+
         components: []
+
       });
+
     }
+
   }
 
   // ==================================================
-  // UPDATE LOG
+  // UPDATE LOG MESSAGE
   // ==================================================
 
   const logGuild =
@@ -655,9 +851,9 @@ async function updateReview(
     );
 
   await logMessage.edit({
+
     content:
-      `${status === "تم القبول" ? "✅" : "❌"} ` +
-      `${status}\n` +
+      `${status === "تم القبول" ? "✅" : "❌"} ${status}\n` +
       `المتقدم: <@${app.userId}>\n` +
       `بواسطة: <@${reviewerId}>`,
 
@@ -667,18 +863,35 @@ async function updateReview(
         status
       )
     ]
+
   });
 }
+
+// ======================================================
+// SLASH COMMAND
+// ======================================================
+
+const command =
+  new SlashCommandBuilder()
+    .setName("application")
+    .setDescription(
+      "فتح لوحة التقديم على Mod Kick"
+    );
 
 // ======================================================
 // READY
 // ======================================================
 
-client.once("ready", () => {
-  console.log(
-    `✅ ${client.user.tag} is online.`
-  );
-});
+client.once(
+  "ready",
+  () => {
+
+    console.log(
+      `✅ ${client.user.tag} is online.`
+    );
+
+  }
+);
 
 // ======================================================
 // INTERACTIONS
@@ -687,9 +900,11 @@ client.once("ready", () => {
 client.on(
   "interactionCreate",
   async interaction => {
+
     try {
+
       // ==================================================
-      // /application
+      // /APPLICATION
       // ==================================================
 
       if (
@@ -697,12 +912,17 @@ client.on(
         interaction.commandName ===
           "application"
       ) {
-        if (!interaction.inGuild()) {
+
+        if (
+          !interaction.inGuild()
+        ) {
+
           return interaction.reply({
             content:
               "❌ الأمر ده متاح داخل السيرفر فقط.",
             ephemeral: true
           });
+
         }
 
         const member =
@@ -719,35 +939,44 @@ client.on(
               .Administrator
           );
 
-        if (!hasRole && !isAdmin) {
+        if (
+          !hasRole &&
+          !isAdmin
+        ) {
+
           return interaction.reply({
             content:
               "❌ مش معاك صلاحية استخدام الأمر.",
             ephemeral: true
           });
+
         }
 
         const panel =
           createEmbed(
+
             "🎮 Elsisy Application",
 
             "**التقديم على Mod Kick**\n\n" +
 
-              "لو حابب تنضم لفريق الإدارة، " +
-              "اضغط على زر **تقديم** وابدأ جاوب " +
-              "على الأسئلة في الخاص.\n\n" +
+            "لو حابب تنضم لفريق الإدارة، " +
+            "اضغط على زر **تقديم** وابدأ جاوب " +
+            "على الأسئلة في الخاص.\n\n" +
 
-              "📌 **تعليمات التقديم:**\n" +
-              "• جاوب على جميع الأسئلة بوضوح.\n" +
-              "• اقرأ السؤال كويس قبل الإجابة.\n" +
-              "• ممنوع إرسال إجابات عشوائية.\n" +
-              "• بعد انتهاء التقديم، الإدارة هتراجع طلبك.\n" +
-              "• النتيجة هتوصلك على الخاص."
+            "📌 **تعليمات التقديم:**\n" +
+
+            "• جاوب على جميع الأسئلة بوضوح.\n" +
+            "• اقرأ السؤال كويس قبل الإجابة.\n" +
+            "• جاوب بنفسك وبطريقتك.\n" +
+            "• بعد انتهاء التقديم، الإدارة هتراجع طلبك.\n" +
+            "• النتيجة هتوصلك على الخاص."
+
           );
 
         const row =
           new ActionRowBuilder()
             .addComponents(
+
               new ButtonBuilder()
                 .setCustomId(
                   "start_application"
@@ -757,12 +986,14 @@ client.on(
                 .setStyle(
                   ButtonStyle.Success
                 )
+
             );
 
         return interaction.reply({
           embeds: [panel],
           components: [row]
         });
+
       }
 
       // ==================================================
@@ -774,42 +1005,55 @@ client.on(
         interaction.customId ===
           "start_application"
       ) {
+
         const userId =
           interaction.user.id;
 
         if (
-          activeApplicants.has(userId)
+          activeApplicants.has(
+            userId
+          )
         ) {
+
           return interaction.reply({
             content:
               "❌ عندك تقديم شغال بالفعل، كمل التقديم الحالي الأول.",
             ephemeral: true
           });
+
         }
 
-        // التأكد من إمكانية إرسال DM
+        // التأكد إن الـ DM مفتوح
 
         try {
+
           await interaction.user.send({
+
             embeds: [
               createQuestionEmbed(0)
             ],
+
             components: [
               createAnswerRow(
                 userId,
                 0
               )
             ]
+
           });
+
         } catch {
+
           return interaction.reply({
             content:
               "❌ مش قادر أبعتلك رسالة في الخاص. افتح الـ DMs وجرب تاني.",
             ephemeral: true
           });
+
         }
 
         const app = {
+
           id:
             `${Date.now()}-${userId}`,
 
@@ -825,22 +1069,30 @@ client.on(
 
           currentQuestion: 0,
 
-          status: "pending",
+          status:
+            "pending",
 
-          reviewerId: null,
+          reviewerId:
+            null,
 
-          rejectReason: null,
+          rejectReason:
+            null,
 
-          threadId: null,
+          threadId:
+            null,
 
-          threadStarterId: null,
+          threadStarterId:
+            null,
 
-          reviewMessageId: null,
+          reviewMessageId:
+            null,
 
           logChannelId:
             CONFIG.logChannelId,
 
-          logMessageId: null
+          logMessageId:
+            null
+
         };
 
         applications.set(
@@ -857,6 +1109,7 @@ client.on(
             "✅ تم بدء التقديم!\nراجع الخاص للإجابة على الأسئلة.",
           ephemeral: true
         });
+
       }
 
       // ==================================================
@@ -869,12 +1122,15 @@ client.on(
           "answer:"
         )
       ) {
+
         const parts =
           interaction.customId.split(
             ":"
           );
 
-        const userId = parts[1];
+        const userId =
+          parts[1];
+
         const index =
           Number(parts[2]);
 
@@ -882,11 +1138,13 @@ client.on(
           interaction.user.id !==
           userId
         ) {
+
           return interaction.reply({
             content:
               "❌ الزر ده مش خاص بتقديمك.",
             ephemeral: true
           });
+
         }
 
         const app =
@@ -904,15 +1162,14 @@ client.on(
           app.currentQuestion !==
             index
         ) {
+
           return interaction.reply({
             content:
               "❌ السؤال ده مش متاح حاليًا.",
             ephemeral: true
           });
-        }
 
-        const question =
-          QUESTIONS[index];
+        }
 
         const modal =
           new ModalBuilder()
@@ -929,10 +1186,9 @@ client.on(
               "answer_text"
             )
             .setLabel(
-              question.title.slice(
-                0,
-                45
-              )
+              QUESTIONS[index]
+                .title
+                .slice(0, 45)
             )
             .setStyle(
               TextInputStyle.Paragraph
@@ -945,12 +1201,15 @@ client.on(
 
         modal.addComponents(
           new ActionRowBuilder()
-            .addComponents(input)
+            .addComponents(
+              input
+            )
         );
 
         return interaction.showModal(
           modal
         );
+
       }
 
       // ==================================================
@@ -963,12 +1222,14 @@ client.on(
           "answer_modal:"
         )
       ) {
+
         const parts =
           interaction.customId.split(
             ":"
           );
 
-        const userId = parts[1];
+        const userId =
+          parts[1];
 
         const index =
           Number(parts[2]);
@@ -977,11 +1238,13 @@ client.on(
           interaction.user.id !==
           userId
         ) {
+
           return interaction.reply({
             content:
               "❌ النموذج ده مش خاص بتقديمك.",
             ephemeral: true
           });
+
         }
 
         const app =
@@ -999,11 +1262,13 @@ client.on(
           app.currentQuestion !==
             index
         ) {
+
           return interaction.reply({
             content:
               "❌ الإجابة دي مش متاحة حاليًا.",
             ephemeral: true
           });
+
         }
 
         const answer =
@@ -1014,11 +1279,13 @@ client.on(
             .trim();
 
         if (!answer) {
+
           return interaction.reply({
             content:
               "❌ لازم تكتب إجابة.",
             ephemeral: true
           });
+
         }
 
         app.answers[index] =
@@ -1034,6 +1301,7 @@ client.on(
           app.currentQuestion <
           QUESTIONS.length
         ) {
+
           await interaction.reply({
             content:
               `✅ تم تسجيل إجابتك ${index + 1}/${QUESTIONS.length}.`,
@@ -1041,27 +1309,35 @@ client.on(
           });
 
           try {
+
             await interaction.user.send({
+
               embeds: [
                 createQuestionEmbed(
                   app.currentQuestion
                 )
               ],
+
               components: [
                 createAnswerRow(
                   userId,
                   app.currentQuestion
                 )
               ]
+
             });
+
           } catch (error) {
+
             console.error(
               "DM error:",
               error
             );
+
           }
 
           return;
+
         }
 
         // ==================================================
@@ -1073,31 +1349,41 @@ client.on(
         );
 
         await interaction.reply({
+
           content:
             "✅ **انتهى التقديم بنجاح!**\n\n" +
             "تم استلام جميع إجاباتك.\n" +
             "هيوصلك إشعار بالنتيجة على الخاص بعد مراجعة الإدارة.",
+
           ephemeral: true
+
         });
 
         try {
+
           await deliverApplication(
             app
           );
+
         } catch (error) {
+
           console.error(
             "Application delivery error:",
             error
           );
 
           try {
+
             await interaction.user.send(
               "⚠️ تم تسجيل إجاباتك، لكن حصلت مشكلة أثناء إرسال التقديم للإدارة. تواصل مع الإدارة."
             );
+
           } catch {}
+
         }
 
         return;
+
       }
 
       // ==================================================
@@ -1110,48 +1396,65 @@ client.on(
           interaction.customId.startsWith(
             "accept:"
           ) ||
+
           interaction.customId.startsWith(
             "reject:"
           ) ||
+
           interaction.customId.startsWith(
             "ai:"
           )
         )
       ) {
+
         const parts =
           interaction.customId.split(
             ":"
           );
 
-        const action = parts[0];
-        const appId = parts[1];
+        const action =
+          parts[0];
+
+        const appId =
+          parts[1];
 
         const app =
-          applications.get(appId);
+          applications.get(
+            appId
+          );
 
         if (!app) {
+
           return interaction.reply({
             content:
               "❌ التقديم مش موجود في ذاكرة البوت. غالبًا البوت اتعمله Restart.",
             ephemeral: true
           });
+
         }
 
         if (
-          !canReview(interaction)
+          !canReview(
+            interaction
+          )
         ) {
+
           return interaction.reply({
             content:
               "❌ مش معاك صلاحية مراجعة التقديم.",
             ephemeral: true
           });
+
         }
 
         // ==================================================
         // AI CHECK
         // ==================================================
 
-        if (action === "ai") {
+        if (
+          action === "ai"
+        ) {
+
           const result =
             estimateAIStyle(
               app.answers
@@ -1160,6 +1463,7 @@ client.on(
           if (
             result.score === null
           ) {
+
             return interaction.reply({
               embeds: [
                 createEmbed(
@@ -1169,22 +1473,31 @@ client.on(
               ],
               ephemeral: true
             });
+
           }
 
           return interaction.reply({
+
             embeds: [
+
               createEmbed(
+
                 "🤖 فحص أسلوب الإجابات",
 
                 `**المؤشر الأسلوبي التقريبي:** \`${result.score}%\`\n\n` +
 
                 `${result.note}\n\n` +
 
-                "⚠️ **مهم:** المؤشر ده مش كاشف AI حقيقي، ومش إثبات إن الشخص استخدم AI. لا تعتمد عليه وحده في قرار القبول أو الرفض."
+                "⚠️ المؤشر ده مش كاشف AI حقيقي ومش إثبات إن الشخص استخدم AI، ومينفعش يكون دليل لوحده على القبول أو الرفض."
+
               )
+
             ],
+
             ephemeral: true
+
           });
+
         }
 
         // ==================================================
@@ -1195,11 +1508,13 @@ client.on(
           app.status !==
           "pending"
         ) {
+
           return interaction.reply({
             content:
               "❌ التقديم ده تمت مراجعته بالفعل.",
             ephemeral: true
           });
+
         }
 
         // ==================================================
@@ -1209,6 +1524,7 @@ client.on(
         if (
           action === "reject"
         ) {
+
           const modal =
             new ModalBuilder()
               .setCustomId(
@@ -1246,6 +1562,7 @@ client.on(
           return interaction.showModal(
             modal
           );
+
         }
 
         // ==================================================
@@ -1255,6 +1572,7 @@ client.on(
         if (
           action === "accept"
         ) {
+
           await interaction.deferReply({
             ephemeral: true
           });
@@ -1267,20 +1585,30 @@ client.on(
           const member =
             await guild.members.fetch(
               app.userId
-            ).catch(() => null);
+            ).catch(
+              () => null
+            );
 
           if (!member) {
+
             return interaction.editReply(
               "❌ المتقدم مش موجود في السيرفر الأساسي."
             );
+
           }
 
           try {
+
             await member.roles.add(
+
               CONFIG.acceptedRoleId,
+
               `Elsisy Application accepted by ${interaction.user.tag}`
+
             );
+
           } catch (error) {
+
             console.error(
               "Role assignment error:",
               error
@@ -1289,6 +1617,7 @@ client.on(
             return interaction.editReply(
               "❌ فشلت إضافة الرول. تأكد إن البوت أعلى من الرول ومعاه Manage Roles."
             );
+
           }
 
           app.status =
@@ -1304,13 +1633,17 @@ client.on(
           );
 
           // ==================================================
-          // DM ACCEPT
+          // ACCEPT DM
           // ==================================================
 
           try {
+
             await member.send({
+
               embeds: [
+
                 createEmbed(
+
                   "🎉 تهانينا! تم قبولك مبدئيًا",
 
                   `أهلًا <@${app.userId}>!\n\n` +
@@ -1318,22 +1651,31 @@ client.on(
                   "تم قبول تقديمك على **Mod Kick** مبدئيًا في Elsisy.\n\n" +
 
                   "🎉 مبروك!\n" +
+
                   "تابع تعليمات الإدارة والخطوات القادمة.",
 
                   0x2ecc71
+
                 )
+
               ]
+
             });
+
           } catch {
+
             console.log(
               `Could not DM ${app.userId}`
             );
+
           }
 
           return interaction.editReply(
             "✅ تم قبول التقديم وإضافة الرول وإبلاغ المتقدم."
           );
+
         }
+
       }
 
       // ==================================================
@@ -1346,6 +1688,7 @@ client.on(
           "reject_modal:"
         )
       ) {
+
         const parts =
           interaction.customId.split(
             ":"
@@ -1360,32 +1703,40 @@ client.on(
           );
 
         if (!app) {
+
           return interaction.reply({
             content:
               "❌ التقديم مش موجود في ذاكرة البوت.",
             ephemeral: true
           });
+
         }
 
         if (
-          !canReview(interaction)
+          !canReview(
+            interaction
+          )
         ) {
+
           return interaction.reply({
             content:
               "❌ مش معاك صلاحية مراجعة التقديم.",
             ephemeral: true
           });
+
         }
 
         if (
           app.status !==
           "pending"
         ) {
+
           return interaction.reply({
             content:
               "❌ التقديم تمت مراجعته بالفعل.",
             ephemeral: true
           });
+
         }
 
         const reason =
@@ -1396,11 +1747,13 @@ client.on(
             .trim();
 
         if (!reason) {
+
           return interaction.reply({
             content:
               "❌ لازم تكتب سبب الرفض.",
             ephemeral: true
           });
+
         }
 
         await interaction.deferReply({
@@ -1423,18 +1776,22 @@ client.on(
         );
 
         // ==================================================
-        // DM REJECT
+        // REJECT DM
         // ==================================================
 
         try {
+
           const user =
             await client.users.fetch(
               app.userId
             );
 
           await user.send({
+
             embeds: [
+
               createEmbed(
+
                 "❌ حظ أوفر في المرة القادمة",
 
                 `للأسف تم رفض تقديمك على **Mod Kick** في Elsisy.\n\n` +
@@ -1444,20 +1801,29 @@ client.on(
                 "شكرًا لاهتمامك بالتقديم، ونتمنى لك التوفيق.",
 
                 0xe74c3c
+
               )
+
             ]
+
           });
+
         } catch {
+
           console.log(
             `Could not DM ${app.userId}`
           );
+
         }
 
         return interaction.editReply(
           "✅ تم رفض التقديم وتحديث اللوج وإرسال سبب الرفض للمتقدم."
         );
+
       }
+
     } catch (error) {
+
       console.error(
         "Interaction error:",
         error
@@ -1467,22 +1833,33 @@ client.on(
         !interaction.replied &&
         !interaction.deferred
       ) {
+
         await interaction.reply({
+
           content:
             "❌ حصل خطأ أثناء تنفيذ الطلب.",
+
           ephemeral: true
-        }).catch(() => {});
+
+        }).catch(
+          () => {}
+        );
+
       }
+
     }
+
   }
 );
 
 // ======================================================
-// REGISTER + LOGIN
+// REGISTER COMMAND + LOGIN
 // ======================================================
 
 (async () => {
+
   try {
+
     const rest =
       new REST({
         version: "10"
@@ -1491,14 +1868,17 @@ client.on(
       );
 
     await rest.put(
+
       Routes.applicationCommands(
         CONFIG.clientId
       ),
+
       {
         body: [
           command.toJSON()
         ]
       }
+
     );
 
     console.log(
@@ -1508,12 +1888,16 @@ client.on(
     await client.login(
       CONFIG.token
     );
+
   } catch (error) {
+
     console.error(
       "❌ Startup error:",
       error
     );
 
     process.exit(1);
+
   }
+
 })();
